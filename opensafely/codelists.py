@@ -103,9 +103,13 @@ def add(codelist_url, codelists_dir=None):
 
     with codelists_file.open("r+") as f:
         lines = f.readlines()
-        if lines and not lines[-1].endswith("\n"):
-            codelist_handle = "\n" + codelist_handle
-        f.write(codelist_handle + "\n")
+        existing_codelists = {
+            line.strip().rstrip("/") for line in lines if line.strip()
+        }
+        if codelist_handle.strip().rstrip("/") not in existing_codelists:
+            if lines and not lines[-1].endswith("\n"):
+                f.write("\n")
+            f.write(codelist_handle + "\n")
 
     # parse the codelists file to make sure it's valid
     parse_codelist_file(codelists_dir)

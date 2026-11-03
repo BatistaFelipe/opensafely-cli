@@ -301,6 +301,46 @@ def test_codelists_add(codelists_path, requests_mock):
     assert (codelists_path / "project123-codelist456.csv").read_text() == "foo"
 
 
+@pytest.mark.parametrize(
+    "first_suffix, second_suffix",
+    [
+        ("version1", "version1"),
+        ("version1", "version1/"),
+        ("version1/", "version1"),
+        ("version1", "version1/#full-list"),
+        ("version1", "version1/download.csv"),
+    ],
+)
+def test_codelists_add_is_idempotent(
+    codelists_path, requests_mock, first_suffix, second_suffix
+):
+    codelists_path /= "codelists"
+    codelists_file = codelists_path / "codelists.txt"
+    prior_codelists = codelists_file.read_text()
+    for codelist in prior_codelists.splitlines():
+        requests_mock.get(
+            f"https://www.opencodelists.org/codelist/{codelist.rstrip('/')}/download.csv",
+            text="foo",
+            headers={"content-type": "text/csv"},
+        )
+    requests_mock.get(
+        "https://www.opencodelists.org/"
+        "codelist/project123/codelist456/version1/download.csv",
+        text="foo",
+        headers={"content-type": "text/csv"},
+    )
+
+    base_url = "https://www.opencodelists.org/codelist/project123/codelist456/"
+
+    codelists.add(base_url + first_suffix, codelists_path)
+
+    content_after_first_add = codelists_file.read_text()
+
+    codelists.add(base_url + second_suffix, codelists_path)
+
+    assert codelists_file.read_text() == content_after_first_add
+
+
 def test_codelists_add_with_anchor_url(codelists_path, requests_mock):
     codelists_path /= "codelists"
     codelists_file = codelists_path / "codelists.txt"
